@@ -5,6 +5,8 @@ import {
   BarChart as BarChartIcon,
   LineChart as LineChartIcon,
   PieChart as PieChartIcon,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   PieChart,
@@ -13,81 +15,141 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  BarChart,
+  Bar,
 } from "recharts";
+import { mockSalesData } from "@/lib/mock-data";
 
-interface AnalyticsSectionProps {
-  inventoryTrends?: {
-    date: string;
-    value: number;
-  }[];
-  locationDistribution?: {
-    location: string;
-    count: number;
-  }[];
-}
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
-
-const AnalyticsSection = ({
-  inventoryTrends = [
-    { date: "2024-01", value: 1200 },
-    { date: "2024-02", value: 1500 },
-    { date: "2024-03", value: 1300 },
-  ],
-  locationDistribution = [
-    { location: "Main Store", count: 500 },
-    { location: "Warehouse", count: 800 },
-    { location: "Branch Store", count: 300 },
-  ],
-}: AnalyticsSectionProps) => {
+const AnalyticsSection = () => {
   return (
-    <div className="w-full h-[242px] bg-background p-4">
-      <Card className="h-full">
-        <Tabs defaultValue="distribution" className="h-full">
-          <div className="flex items-center justify-between px-4 pt-2">
-            <h2 className="text-xl font-semibold">Analytics Overview</h2>
-            <TabsList>
-              <TabsTrigger value="trends" className="flex items-center gap-2">
-                <LineChartIcon className="h-4 w-4" />
-                Trends
-              </TabsTrigger>
-              <TabsTrigger
-                value="distribution"
-                className="flex items-center gap-2"
-              >
-                <PieChartIcon className="h-4 w-4" />
-                Store Distribution
-              </TabsTrigger>
-              <TabsTrigger
-                value="categories"
-                className="flex items-center gap-2"
-              >
-                <BarChartIcon className="h-4 w-4" />
-                Categories
-              </TabsTrigger>
-            </TabsList>
+    <div className="space-y-6 p-6 bg-background">
+      {/* Today's Overview */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground mb-2">
+            Today's Sales
           </div>
+          <div className="text-2xl font-bold">
+            ${mockSalesData.today.total.toLocaleString()}
+          </div>
+          <div className="flex items-center mt-2 text-sm">
+            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+            <span className="text-green-500">
+              {mockSalesData.today.percentChange}%
+            </span>
+            <span className="text-muted-foreground ml-1">vs yesterday</span>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground mb-2">
+            Orders
+          </div>
+          <div className="text-2xl font-bold">{mockSalesData.today.orders}</div>
+          <div className="text-sm text-muted-foreground mt-2">
+            Today's total orders
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground mb-2">
+            Average Order
+          </div>
+          <div className="text-2xl font-bold">
+            ${mockSalesData.today.averageOrder}
+          </div>
+          <div className="text-sm text-muted-foreground mt-2">
+            Per transaction
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-muted-foreground mb-2">
+            Hourly Trend
+          </div>
+          <div className="h-[50px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mockSalesData.hourlyTrends}>
+                <Line
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
 
-          <TabsContent value="trends" className="h-[170px] mt-2">
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              [Inventory Trends Chart Placeholder]
+      {/* Charts */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-4">
+          <Tabs defaultValue="monthly" className="h-[400px]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Sales Trends</h3>
+              <TabsList>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="hourly">Today</TabsTrigger>
+              </TabsList>
             </div>
-          </TabsContent>
 
-          <TabsContent value="distribution" className="h-[170px] mt-2">
+            <TabsContent value="monthly" className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mockSalesData.monthlyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="sales" fill="#8884d8" />
+                  <Bar dataKey="orders" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            </TabsContent>
+
+            <TabsContent value="hourly" className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={mockSalesData.hourlyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+          </Tabs>
+        </Card>
+
+        <Card className="p-4">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">Category Distribution</h3>
+          </div>
+          <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={locationDistribution}
+                  data={mockSalesData.categoryDistribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={40}
+                  innerRadius={60}
                   outerRadius={80}
-                  dataKey="count"
-                  nameKey="location"
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
                   label
                 >
-                  {locationDistribution.map((entry, index) => (
+                  {mockSalesData.categoryDistribution.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
@@ -98,15 +160,28 @@ const AnalyticsSection = ({
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </TabsContent>
-
-          <TabsContent value="categories" className="h-[170px] mt-2">
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              [Categories Chart Placeholder]
-            </div>
-          </TabsContent>
-        </Tabs>
-      </Card>
+          </div>
+          <div className="mt-4 space-y-2">
+            {mockSalesData.categoryDistribution.map((category, index) => (
+              <div
+                key={category.name}
+                className="flex items-center justify-between"
+              >
+                <div className="flex items-center">
+                  <div
+                    className="w-3 h-3 rounded-full mr-2"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="text-sm">{category.name}</span>
+                </div>
+                <span className="text-sm font-medium">
+                  ${category.sales.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };

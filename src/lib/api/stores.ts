@@ -1,41 +1,39 @@
-import { supabase } from "../supabase";
-import type { Database } from "@/types/supabase";
+import { mockStores } from "../mock-data";
 
-export type Store = Database["public"]["Tables"]["stores"]["Row"];
-export type StoreInsert = Database["public"]["Tables"]["stores"]["Insert"];
-export type StoreUpdate = Database["public"]["Tables"]["stores"]["Update"];
+export type Store = (typeof mockStores)[0];
+export type StoreInsert = Omit<Store, "id" | "created_at" | "updated_at">;
+export type StoreUpdate = Partial<StoreInsert>;
 
 export const getStores = async () => {
-  const { data, error } = await supabase.from("stores").select(`
-      *,
-      users!stores_manager_id_fkey (*)
-    `);
-  if (error) throw error;
-  return data;
+  return mockStores;
 };
 
 export const createStore = async (store: StoreInsert) => {
-  const { data, error } = await supabase
-    .from("stores")
-    .insert(store)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  const newStore = {
+    ...store,
+    id: Math.random().toString(36).substr(2, 9),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  mockStores.push(newStore);
+  return newStore;
 };
 
 export const updateStore = async (id: string, store: StoreUpdate) => {
-  const { data, error } = await supabase
-    .from("stores")
-    .update(store)
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  const index = mockStores.findIndex((s) => s.id === id);
+  if (index === -1) throw new Error("Store not found");
+
+  const updatedStore = {
+    ...mockStores[index],
+    ...store,
+    updated_at: new Date().toISOString(),
+  };
+  mockStores[index] = updatedStore;
+  return updatedStore;
 };
 
 export const deleteStore = async (id: string) => {
-  const { error } = await supabase.from("stores").delete().eq("id", id);
-  if (error) throw error;
+  const index = mockStores.findIndex((s) => s.id === id);
+  if (index === -1) throw new Error("Store not found");
+  mockStores.splice(index, 1);
 };
