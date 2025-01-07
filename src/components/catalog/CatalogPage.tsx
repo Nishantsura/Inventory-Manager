@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getBooks, createBook, updateBook, deleteBook } from "@/lib/api/books";
 import type { Book, BookInsert } from "@/lib/api/books";
 import { BookDialog } from "./BookDialog";
+import { BulkUploadDialog } from "./BulkUploadDialog";
 import { useToast } from "@/components/ui/use-toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ErrorMessage } from "@/components/ui/error-message";
 
 const CatalogPage = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -16,11 +19,14 @@ const CatalogPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { toast } = useToast();
 
   const loadBooks = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const data = await getBooks();
       setBooks(data);
     } catch (err) {
@@ -97,21 +103,31 @@ const CatalogPage = () => {
       book.sku.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (error) return <div className="p-6 text-red-500">{error}</div>;
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} />;
 
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Book Catalog</h1>
-          <Button
-            className="flex items-center gap-2"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Book
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => setBulkUploadOpen(true)}
+            >
+              <Upload className="h-4 w-4" />
+              Bulk Upload
+            </Button>
+            <Button
+              className="flex items-center gap-2"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Book
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-4">
@@ -177,6 +193,12 @@ const CatalogPage = () => {
           onSubmit={editingBook ? handleUpdateBook : handleCreateBook}
           initialData={editingBook || undefined}
           mode={editingBook ? "edit" : "create"}
+        />
+
+        <BulkUploadDialog
+          open={bulkUploadOpen}
+          onOpenChange={setBulkUploadOpen}
+          onSuccess={loadBooks}
         />
       </div>
     </DashboardLayout>

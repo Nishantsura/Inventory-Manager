@@ -4,6 +4,8 @@ import {
   LineChart,
   Package,
   Store,
+  Upload,
+  Tags,
   ShoppingCart,
   Users,
   Settings,
@@ -35,6 +37,11 @@ export function Sidebar({ className, isCollapsed, onToggle }: SidebarProps) {
       href: "/inventory",
     },
     {
+      title: "Pricing",
+      icon: Tags,
+      href: "/pricing",
+    },
+    {
       title: "Stores",
       icon: Store,
       href: "/stores",
@@ -55,6 +62,11 @@ export function Sidebar({ className, isCollapsed, onToggle }: SidebarProps) {
       href: "/reports",
     },
     {
+      title: "Bulk Upload",
+      icon: Upload,
+      href: "/bulk-upload",
+    },
+    {
       title: "Catalog",
       icon: Library,
       href: "/catalog",
@@ -72,19 +84,19 @@ export function Sidebar({ className, isCollapsed, onToggle }: SidebarProps) {
   ];
 
   return (
-    <div className={cn("pb-12 min-h-screen relative", className)}>
+    <div className={cn("pb-12 min-h-screen bg-[#111827]", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
-          <div className="flex items-center justify-between mb-2 px-4">
+          <div className="flex items-center justify-between mb-6 px-4">
             {!isCollapsed && (
-              <h2 className="text-lg font-semibold tracking-tight">
+              <h2 className="text-lg font-semibold tracking-tight text-white">
                 Bookstore
               </h2>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-6 w-6 text-gray-400 hover:text-white hover:bg-gray-800"
               onClick={onToggle}
             >
               {isCollapsed ? (
@@ -102,16 +114,18 @@ export function Sidebar({ className, isCollapsed, onToggle }: SidebarProps) {
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-accent",
+                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
                     isCollapsed && "justify-center px-2",
                     isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-400 hover:text-white hover:bg-gray-800",
                   )}
                   title={isCollapsed ? item.title : undefined}
                 >
-                  <item.icon className="h-4 w-4" />
-                  {!isCollapsed && item.title}
+                  <item.icon className="h-5 w-5" />
+                  {!isCollapsed && (
+                    <span className="text-sm font-medium">{item.title}</span>
+                  )}
                 </Link>
               );
             })}

@@ -1,20 +1,23 @@
 import { supabase } from "../supabase";
 import type { Database } from "@/types/supabase";
 
-export type Order = Database["public"]["Tables"]["orders"]["Row"];
+export type Order = Database["public"]["Tables"]["orders"]["Row"] & {
+  order_items?: OrderItem[];
+};
 export type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
 export type OrderUpdate = Database["public"]["Tables"]["orders"]["Update"];
 
-export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"];
+export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"] & {
+  books?: Database["public"]["Tables"]["books"]["Row"];
+};
 export type OrderItemInsert =
   Database["public"]["Tables"]["order_items"]["Insert"];
 
 export const getOrders = async (storeId?: string) => {
   let query = supabase.from("orders").select(`
-      *,
-      stores (*),
-      order_items (*, books (*))
-    `);
+    *,
+    order_items (*, books (*))
+  `);
 
   if (storeId) {
     query = query.eq("store_id", storeId);
@@ -61,6 +64,7 @@ export const updateOrderStatus = async (
     .eq("id", id)
     .select()
     .single();
+
   if (error) throw error;
   return data;
 };

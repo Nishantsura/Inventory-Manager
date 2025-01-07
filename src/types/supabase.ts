@@ -4,218 +4,121 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      books: {
-        Row: {
-          id: string;
-          title: string;
-          author: string;
-          isbn: string;
-          sku: string;
-          category: string;
-          price: number;
-          created_at: string;
-          updated_at: string;
-          cover_image: string | null;
-          description: string | null;
-          publisher: string | null;
-          publication_date: string | null;
-        };
-        Insert: {
-          id?: string;
-          title: string;
-          author: string;
-          isbn: string;
-          sku: string;
-          category: string;
-          price: number;
-          created_at?: string;
-          updated_at?: string;
-          cover_image?: string | null;
-          description?: string | null;
-          publisher?: string | null;
-          publication_date?: string | null;
-        };
-        Update: {
-          id?: string;
-          title?: string;
-          author?: string;
-          isbn?: string;
-          sku?: string;
-          category?: string;
-          price?: number;
-          created_at?: string;
-          updated_at?: string;
-          cover_image?: string | null;
-          description?: string | null;
-          publisher?: string | null;
-          publication_date?: string | null;
-        };
-      };
-      inventory: {
-        Row: {
-          id: string;
-          book_id: string;
-          store_id: string;
-          quantity: number;
-          created_at: string;
-          updated_at: string;
-          min_stock_level: number;
-          max_stock_level: number;
-        };
-        Insert: {
-          id?: string;
-          book_id: string;
-          store_id: string;
-          quantity: number;
-          created_at?: string;
-          updated_at?: string;
-          min_stock_level?: number;
-          max_stock_level?: number;
-        };
-        Update: {
-          id?: string;
-          book_id?: string;
-          store_id?: string;
-          quantity?: number;
-          created_at?: string;
-          updated_at?: string;
-          min_stock_level?: number;
-          max_stock_level?: number;
-        };
-      };
-      stores: {
-        Row: {
-          id: string;
-          name: string;
-          address: string;
-          created_at: string;
-          updated_at: string;
-          manager_id: string | null;
-          status: "active" | "inactive";
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          address: string;
-          created_at?: string;
-          updated_at?: string;
-          manager_id?: string | null;
-          status?: "active" | "inactive";
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          address?: string;
-          created_at?: string;
-          updated_at?: string;
-          manager_id?: string | null;
-          status?: "active" | "inactive";
-        };
-      };
-      orders: {
-        Row: {
-          id: string;
-          supplier: string;
-          status: "pending" | "completed" | "cancelled";
-          total_amount: number;
-          created_at: string;
-          updated_at: string;
-          store_id: string;
-        };
-        Insert: {
-          id?: string;
-          supplier: string;
-          status?: "pending" | "completed" | "cancelled";
-          total_amount: number;
-          created_at?: string;
-          updated_at?: string;
-          store_id: string;
-        };
-        Update: {
-          id?: string;
-          supplier?: string;
-          status?: "pending" | "completed" | "cancelled";
-          total_amount?: number;
-          created_at?: string;
-          updated_at?: string;
-          store_id?: string;
-        };
-      };
-      order_items: {
-        Row: {
-          id: string;
-          order_id: string;
-          book_id: string;
-          quantity: number;
-          unit_price: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          order_id: string;
-          book_id: string;
-          quantity: number;
-          unit_price: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          order_id?: string;
-          book_id?: string;
-          quantity?: number;
-          unit_price?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      users: {
-        Row: {
-          id: string;
-          email: string;
-          name: string;
-          role: "admin" | "manager" | "staff";
-          store_id: string | null;
-          created_at: string;
-          updated_at: string;
-          status: "active" | "inactive";
-        };
-        Insert: {
-          id?: string;
-          email: string;
-          name: string;
-          role?: "admin" | "manager" | "staff";
-          store_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          status?: "active" | "inactive";
-        };
-        Update: {
-          id?: string;
-          email?: string;
-          name?: string;
-          role?: "admin" | "manager" | "staff";
-          store_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          status?: "active" | "inactive";
-        };
-      };
-    };
+      [_ in never]: never
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Enums: {
-      [_ in never]: never;
-    };
-  };
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never

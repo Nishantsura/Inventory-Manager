@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ErrorMessage } from "@/components/ui/error-message";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -18,245 +22,296 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Plus, Upload, Download, Search, Filter } from "lucide-react";
+import { Search, Download, Upload, MapPin, Filter } from "lucide-react";
 import { mockInventory, mockBooks, mockStores } from "@/lib/mock-data";
-import { InventoryDialog } from "./InventoryDialog";
+import { RackSpaceDialog } from "./RackSpaceDialog";
+import { useToast } from "@/components/ui/use-toast";
 
 type InventoryItem = (typeof mockInventory)[0] & {
   book?: (typeof mockBooks)[0];
-  store?: (typeof mockStores)[0];
 };
 
 const InventoryPage = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState("all");
   const [selectedStore, setSelectedStore] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [rackSpaceDialog, setRackSpaceDialog] = useState({
+    open: false,
+    inventoryId: "",
+    currentLocation: "",
+  });
+  const { toast } = useToast();
 
   useEffect(() => {
-    // In a real app, this would be an API call
-    const enrichedInventory = mockInventory.map((item) => ({
-      ...item,
-      book: mockBooks.find((b) => b.id === item.book_id),
-      store: mockStores.find((s) => s.id === item.store_id),
-    }));
-    setInventory(enrichedInventory);
+    // Simulate API call
+    setLoading(true);
+    setTimeout(() => {
+      const enrichedInventory = mockInventory.map((item) => ({
+        ...item,
+        book: mockBooks.find((b) => b.id === item.book_id),
+      }));
+      setInventory(enrichedInventory);
+      setLoading(false);
+    }, 1000);
   }, []);
 
-  const handleCreateInventory = (data: any) => {
-    const newItem = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      status:
-        data.quantity <= data.min_stock_level
-          ? "low_stock"
-          : data.quantity >= data.max_stock_level
-            ? "overstocked"
-            : "in_stock",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setInventory([...inventory, newItem]);
-    setDialogOpen(false);
+  const handleRackSpaceAssignment = async (data: any) => {
+    try {
+      const location = `${data.section}-${data.aisle}-R${data.rack}-S${data.shelf}-${data.slot}`;
+      const updatedInventory = inventory.map((item) =>
+        item.id === rackSpaceDialog.inventoryId
+          ? { ...item, rack_location: location }
+          : item,
+      );
+      setInventory(updatedInventory);
+      setRackSpaceDialog({ open: false, inventoryId: "", currentLocation: "" });
+      toast({
+        title: "Success",
+        description: "Rack space assigned successfully",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to assign rack space",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateInventory = (data: any) => {
-    if (!editingItem) return;
-    const updatedInventory = inventory.map((item) =>
-      item.id === editingItem.id
-        ? {
-            ...item,
-            ...data,
-            status:
-              data.quantity <= data.min_stock_level
-                ? "low_stock"
-                : data.quantity >= data.max_stock_level
-                  ? "overstocked"
-                  : "in_stock",
-            updated_at: new Date().toISOString(),
-          }
-        : item,
-    );
-    setInventory(updatedInventory);
-    setDialogOpen(false);
-    setEditingItem(null);
-  };
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} />;
 
   const filteredInventory = inventory.filter((item) => {
-    const matchesSearch =
-      item.book?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.book?.isbn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.book?.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTab =
+      selectedTab === "all" ||
+      (selectedTab === "in-stock" && item.quantity > 0) ||
+      (selectedTab === "out-of-stock" && item.quantity === 0) ||
+      (selectedTab === "over-sold" && item.quantity < 0);
 
     const matchesStore =
       selectedStore === "all" || item.store_id === selectedStore;
 
-    const matchesStatus =
-      selectedStatus === "all" || item.status === selectedStatus;
+    const matchesCategory =
+      selectedCategory === "all" || item.book?.category === selectedCategory;
 
-    return matchesSearch && matchesStore && matchesStatus;
+    const matchesSearch =
+      searchTerm === "" ||
+      item.book?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.book?.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.book?.isbn.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return matchesTab && matchesStore && matchesCategory && matchesSearch;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "in_stock":
-        return "default";
-      case "low_stock":
-        return "destructive";
-      case "overstocked":
-        return "warning";
-      default:
-        return "secondary";
-    }
-  };
+  const categories = Array.from(
+    new Set(mockBooks.map((book) => book.category)),
+  );
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Inventory Management</h1>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Import
-            </Button>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            <Button
-              className="flex items-center gap-2"
-              onClick={() => setDialogOpen(true)}
+      <div className="p-4 space-y-4">
+        {/* Header Message */}
+        <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2">
+          <span>
+            From now on, you will see order data for "DEFAULT 37522" only.
+          </span>
+        </div>
+
+        {/* Store Selection and Filters */}
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex gap-4">
+            <Select value={selectedStore} onValueChange={setSelectedStore}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select store" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stores</SelectItem>
+                {mockStores.map((store) => (
+                  <SelectItem key={store.id} value={store.id}>
+                    {store.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
             >
-              <Plus className="h-4 w-4" />
-              Add Item
-            </Button>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        <div className="grid grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="text-sm font-medium text-muted-foreground">
-              Total Items
-            </div>
-            <div className="text-2xl font-bold">{inventory.length}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm font-medium text-muted-foreground">
-              Low Stock Items
-            </div>
-            <div className="text-2xl font-bold text-destructive">
-              {inventory.filter((item) => item.status === "low_stock").length}
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm font-medium text-muted-foreground">
-              Overstocked Items
-            </div>
-            <div className="text-2xl font-bold text-yellow-600">
-              {inventory.filter((item) => item.status === "overstocked").length}
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm font-medium text-muted-foreground">
-              Total Value
-            </div>
-            <div className="text-2xl font-bold">
-              $
-              {inventory
-                .reduce(
-                  (sum, item) => sum + (item.book?.price || 0) * item.quantity,
-                  0,
-                )
-                .toLocaleString()}
-            </div>
-          </Card>
-        </div>
-
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <div className="flex gap-2">
             <Input
-              className="pl-10"
-              placeholder="Search by title, ISBN, or SKU..."
+              placeholder="Search inventory..."
+              className="w-[300px]"
+              type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" /> Export
+            </Button>
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-2" /> Import
+            </Button>
           </div>
-          <Select value={selectedStore} onValueChange={setSelectedStore}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select store" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stores</SelectItem>
-              {mockStores.map((store) => (
-                <SelectItem key={store.id} value={store.id}>
-                  {store.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="in_stock">In Stock</SelectItem>
-              <SelectItem value="low_stock">Low Stock</SelectItem>
-              <SelectItem value="overstocked">Overstocked</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Tabs */}
+        <Tabs
+          defaultValue={selectedTab}
+          className="w-full"
+          onValueChange={setSelectedTab}
+        >
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="in-stock">In Stock</TabsTrigger>
+            <TabsTrigger value="out-of-stock">Out of Stock</TabsTrigger>
+            <TabsTrigger value="over-sold">Over Sold Inventory</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Table */}
+        <div className="bg-white rounded-lg shadow">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Book Title</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Store</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Min Level</TableHead>
-                <TableHead>Max Level</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Restocked</TableHead>
+                <TableHead>Image</TableHead>
+                <TableHead className="w-[200px]">
+                  <div className="flex items-center gap-2">
+                    SKU CODE
+                    <Search className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    NAME
+                    <Search className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>IS COMBO</TableHead>
+                <TableHead>SYNC MODE</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    PRODUCT CATEGORY
+                    <Search className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    PACKAGE TYPE
+                    <Search className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    PRODUCT GROUP
+                    <Search className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    SKU UPC
+                    <Search className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead>IN STOCK</TableHead>
+                <TableHead>BLOCKED</TableHead>
+                <TableHead>BUFFER STOCK</TableHead>
+                <TableHead>RACK LOCATION</TableHead>
+                <TableHead>WEIGHT</TableHead>
+                <TableHead>LAST PURCHASE PRICE</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredInventory.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {item.book?.title}
-                  </TableCell>
-                  <TableCell>{item.book?.sku}</TableCell>
-                  <TableCell>{item.store?.name}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell>{item.min_stock_level}</TableCell>
-                  <TableCell>{item.max_stock_level}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusColor(item.status)}>
-                      {item.status.replace("_", " ")}
+                    <img
+                      src={
+                        item.book?.cover_image ||
+                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=50&h=50&fit=crop"
+                      }
+                      alt={item.book?.title}
+                      className="w-10 h-10 object-cover rounded"
+                    />
+                  </TableCell>
+                  <TableCell>{item.book?.sku || "-"}</TableCell>
+                  <TableCell>{item.book?.title || "-"}</TableCell>
+                  <TableCell>No</TableCell>
+                  <TableCell>Default</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {item.book?.category || "books"}
                     </Badge>
                   </TableCell>
+                  <TableCell>L30W23H2</TableCell>
+                  <TableCell>-</TableCell>
+                  <TableCell>{item.book?.isbn || "-"}</TableCell>
                   <TableCell>
-                    {new Date(item.last_restock_date).toLocaleDateString()}
+                    <Badge
+                      variant={item.quantity > 0 ? "default" : "destructive"}
+                    >
+                      {item.quantity}
+                    </Badge>
                   </TableCell>
+                  <TableCell>0</TableCell>
+                  <TableCell>0</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        setEditingItem(item);
-                        setDialogOpen(true);
-                      }}
+                      className="flex items-center gap-2"
+                      onClick={() =>
+                        setRackSpaceDialog({
+                          open: true,
+                          inventoryId: item.id,
+                          currentLocation: item.rack_location,
+                        })
+                      }
                     >
-                      Edit
+                      <MapPin className="h-4 w-4" />
+                      {item.rack_location || "Assign"}
                     </Button>
+                  </TableCell>
+                  <TableCell>500</TableCell>
+                  <TableCell>
+                    ₹{item.book?.price.toFixed(2) || "0.00"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-blue-500"
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-blue-500"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -264,14 +319,13 @@ const InventoryPage = () => {
           </Table>
         </div>
 
-        <InventoryDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          onSubmit={editingItem ? handleUpdateInventory : handleCreateInventory}
-          initialData={editingItem || undefined}
-          mode={editingItem ? "edit" : "create"}
-          books={mockBooks}
-          stores={mockStores}
+        <RackSpaceDialog
+          open={rackSpaceDialog.open}
+          onOpenChange={(open) =>
+            setRackSpaceDialog({ open, inventoryId: "", currentLocation: "" })
+          }
+          onSubmit={handleRackSpaceAssignment}
+          currentLocation={rackSpaceDialog.currentLocation}
         />
       </div>
     </DashboardLayout>
